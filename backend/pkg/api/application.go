@@ -105,6 +105,9 @@ func SubmitApplication(c *gin.Context) {
 		})
 		return
 	}
+	now := time.Now()
+	application.IsDraft = false
+	application.SubmittedAt = &now
 
 	// ✅ Check completeness before submission
 	if err := utils.CheckApplicationCompleteness(&application); err != nil {
@@ -115,10 +118,6 @@ func SubmitApplication(c *gin.Context) {
 		})
 		return
 	}
-
-	now := time.Now()
-	application.IsDraft = false
-	application.SubmittedAt = &now
 
 	if err := db.DB.
 		Save(&application).Error; err != nil {
@@ -283,7 +282,171 @@ func InitApplication(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":     "Application initialized successfully",
-		"application": application,
+		"message": "Application initialized successfully",
 	})
+}
+
+// ModifyApplication allows modifying the application before submission
+// @Summary Modify application before submission
+// @Description Modify the application details, including student profile, scheme, etc., before final submission
+// @Tags application
+// @Accept json
+// @Produce json
+// @Param user_id path int true "User ID"
+// @Param scheme_id path int true "Scheme ID"
+// @Param application_id path int true "Application ID"
+// @Param application body models.Application true "Application details"
+// @Security BasicAuth
+// @Success 200 {object} models.Application
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/applications/modify-application/{user_id}/{scheme_id}/{application_id} [put]
+
+func ModifyApplication(c *gin.Context) {
+	// Get user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "User ID not found in context",
+		})
+		return
+	}
+	// Ensure userID is of the correct type (uint)
+	userIDUint, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Message: "Invalid user ID type",
+		})
+		return
+	}
+
+	schemeID := c.Param("id")
+
+	// Fetch the application based on user_id and scheme_id
+	var application models.Application
+	if err := db.DB.Where("user_id = ? AND id=?", userIDUint, schemeID).First(&application).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Application not found"})
+		return
+	}
+
+	// Fetch the student profile based on user_id
+	var studentProfile models.StudentProfile
+	if err := db.DB.Where("user_id = ?", userID).First(&studentProfile).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Student profile not found"})
+		return
+	}
+
+	// Bind the updated data from the request
+	var input models.StudentProfileInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	// Check if the application is still a draft
+	if application.IsDraft {
+		// Modify student profile fields based on input
+		if input.FullName != "" {
+			studentProfile.FullName = input.FullName
+		}
+		if input.Email != "" {
+			studentProfile.Email = input.Email
+		}
+		if input.PhoneNumber != "" {
+			studentProfile.PhoneNumber = input.PhoneNumber
+		}
+		if input.DateOfBirth != nil {
+			studentProfile.DateOfBirth = *input.DateOfBirth
+		}
+		if input.Qualification != "" {
+			studentProfile.Qualification = input.Qualification
+		}
+		if input.Category != "" {
+			studentProfile.Category = input.Category
+		}
+		if input.Income != nil {
+			studentProfile.Income = *input.Income
+		}
+		if input.Nationality != "" {
+			studentProfile.Nationality = input.Nationality
+		}
+
+		// Update student's documents if any
+		for _, doc := range input.Documents {
+			newDocument := models.UploadDocument{
+				StudentID: studentProfile.ID,
+				Name:      doc.Name,
+				URL:       doc.URL,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if err := db.DB.Create(&newDocument).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload document"})
+				return
+			}
+		}
+
+		// Update student's addresses if any
+		for _, addr := range input.Addresses {
+			newAddress := models.Address{
+				StudentID: studentProfile.ID,
+				Type:      addr.Type,
+				Street:    addr.Street,
+				City:      addr.City,
+				State:     addr.State,
+				Pincode:   addr.Pincode,
+				Country:   addr.Country,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if err := db.DB.Create(&newAddress).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add address"})
+				return
+			}
+		}
+
+		// Update student's education history if any
+		for _, edu := range input.EducationHistory {
+			newEdu := models.StudentAcademicQualification{
+				StudentID:     studentProfile.ID,
+				Degree:        edu.Degree,
+				University:    edu.University,
+				YearOfPassing: edu.YearOfPassing,
+				Grade:         edu.Grade,
+				Course:        edu.Course,
+				CreatedAt:     time.Now(),
+				UpdatedAt:     time.Now(),
+			}
+			if err := db.DB.Create(&newEdu).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add education history"})
+				return
+			}
+		}
+
+		// Save updated student profile
+		if err := db.DB.Save(&studentProfile).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update student profile"})
+			return
+		}
+
+		// // Update the application status if needed
+		// if input.Status != "" {
+		// 	application.IsDraft = false
+		// 	application.Status = input.Status
+		// 	application.SubmittedAt = nil
+		// }
+
+		// Save updated application
+		if err := db.DB.Save(&application).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Application modified successfully"})
+	} else {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot modify application, it is already submitted."})
+	}
 }

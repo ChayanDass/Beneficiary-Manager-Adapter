@@ -45,7 +45,7 @@ type StudentAcademicQualification struct {
 
 type StudentProfile struct {
 	ID               uint                           `gorm:"primaryKey" json:"-"`
-	UserID           uint                           `gorm:"not null;unique" json:"-"`
+	UserID           uint                           `gorm:"not null;" json:"-"`
 	FullName         string                         `gorm:"not null" json:"full_name"`
 	DateOfBirth      time.Time                      `json:"date_of_birth"`
 	Gender           string                         `gorm:"type:varchar(10)" json:"gender"`
@@ -79,4 +79,45 @@ type Application struct {
 	User             User           `gorm:"foreignKey:UserID" json:"user"`
 	Scheme           Scheme         `gorm:"foreignKey:SchemeID" json:"-"`
 	StudentProfile   StudentProfile `gorm:"foreignKey:StudentProfileID" json:"student_profile"`
+	Status           string         `gorm:"type:varchar(20)" json:"status"` // status of the application (submitted, under review, approved, rejected)
+}
+
+type DocumentInput struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type AddressInput struct {
+	Type    string `json:"type"` // e.g., permanent, current
+	Street  string `json:"street"`
+	City    string `json:"city"`
+	State   string `json:"state"`
+	Pincode string `json:"pincode"`
+	Country string `json:"country"`
+}
+
+type EducationHistoryInput struct {
+	Degree        string `json:"degree"`
+	University    string `json:"university"`
+	YearOfPassing int    `json:"year_of_passing"`
+	Grade         string `json:"grade"`
+	Course        string `json:"course"`
+}
+
+type StudentProfileInput struct {
+	FullName         string                  `json:"full_name"`
+	DateOfBirth      *time.Time              `json:"date_of_birth"`
+	Gender           string                  `json:"gender"`
+	PhoneNumber      string                  `json:"phone_number"`
+	Qualification    string                  `json:"qualification"`
+	Email            string                  `json:"email"`
+	AadhaarNumber    string                  `json:"aadhaar_number"`
+	Nationality      string                  `json:"nationality"`
+	Category         string                  `json:"category"`
+	Income           *float64                `json:"income"`
+	PassportNumber   string                  `json:"passport_number"`
+	IsInternational  bool                    `json:"is_international"`
+	Documents        []DocumentInput         `json:"documents"`
+	Addresses        []AddressInput          `json:"addresses"`
+	EducationHistory []EducationHistoryInput `json:"education_history"`
 }

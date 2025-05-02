@@ -56,6 +56,7 @@ func Router() *gin.Engine {
 			application.GET("/", GetApplications)                          // Get application status
 			application.POST("/withdraw-application", WithdrawApplication) // Submit application without user ID
 			application.POST("/init-application", InitApplication)         // Initialize application
+			application.PATCH("/:id", ModifyApplication)                   // Update application
 
 		}
 

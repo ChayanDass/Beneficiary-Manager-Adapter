@@ -77,3 +77,11 @@ func (a *Application) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type InitApplicationRequest struct {
+	SchemeID uint `json:"scheme_id" binding:"required"`
+}
+
+type SubmitExistingApplicationRequest struct {
+	ApplicationID uint `json:"application_id" binding:"required"`
+}

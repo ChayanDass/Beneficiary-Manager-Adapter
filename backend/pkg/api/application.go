@@ -8,6 +8,7 @@ import (
 	"github.com/ChayanDass/beneficiary-manager/pkg/models"
 	"github.com/ChayanDass/beneficiary-manager/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetApplications(c *gin.Context) {
@@ -62,12 +63,8 @@ func GetApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
-type SubmitExistingApplicationRequest struct {
-	ApplicationID uint `json:"application_id" binding:"required"`
-}
-
 func SubmitApplication(c *gin.Context) {
-	var req SubmitExistingApplicationRequest
+	var req models.SubmitExistingApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -146,7 +143,7 @@ func SubmitApplication(c *gin.Context) {
 }
 
 func WithdrawApplication(c *gin.Context) {
-	var req SubmitExistingApplicationRequest
+	var req models.SubmitExistingApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -197,4 +194,96 @@ func WithdrawApplication(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, res)
+}
+
+// InitApplication initializes the application form for a user
+// @Summary Initialize application for a user
+// @Description Initialize application with all required data like student profile, scheme, etc.
+// @Tags application
+// @Accept json
+// @Produce json
+// @Param user_id path int true "User ID"
+// @Param scheme_id path int true "Scheme ID"
+// @Security BasicAuth
+// @Success 200 {object} models.Application
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Router /api/v1/applications/init-application/{user_id}/{scheme_id} [post]
+func InitApplication(c *gin.Context) {
+	var req models.InitApplicationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userID := userIDVal.(uint)
+
+	// Optional: Check if there's already a draft application for this user & scheme
+	var existing models.Application
+	if err := db.DB.
+		Where("user_id = ? AND scheme_id = ? ", userID, req.SchemeID).
+		First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": " application already exists"})
+		return
+	}
+	var schema models.Scheme
+	// Check if the scheme exists
+	if err := db.DB.First(&schema, req.SchemeID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Code:    http.StatusNotFound,
+				Message: "Scheme not found",
+				Error:   err.Error(),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to fetch scheme",
+				Error:   err.Error(),
+			})
+		}
+		return
+	}
+
+	// Continue with the logic after checking for the scheme
+
+	student := models.StudentProfile{
+		UserID:   userID,
+		FullName: "Unknown", // Use default or empty values
+		// ... other defaults
+	}
+	if err := db.DB.Create(&student).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create student profile"})
+		return
+	}
+
+	application := models.Application{
+		UserID:           userID,
+		SchemeID:         req.SchemeID,
+		IsDraft:          true,
+		StudentProfileID: student.ID,
+	}
+
+	if err := db.DB.Create(&application).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to initialize application",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":     "Application initialized successfully",
+		"application": application,
+	})
 }

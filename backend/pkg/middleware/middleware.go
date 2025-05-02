@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,6 +20,27 @@ func CORSMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+	}
+}
+
+func BasicAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username := c.GetHeader("X-Username")
+		password := c.GetHeader("X-Password")
+
+		if username == "" || password == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Missing username or password in headers",
+			})
+			return
+		}
+
+		// You might want to validate the user against DB here
+
+		// Set in context
+		c.Set("username", username)
+		c.Set("password", password)
 		c.Next()
 	}
 }

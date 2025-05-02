@@ -32,6 +32,7 @@ func Router() *gin.Engine {
 
 	// Apply global middlewares
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.BasicAuth())
 
 	// Handle invalid routes
 	r.NoRoute(HandleInvalidUrl)

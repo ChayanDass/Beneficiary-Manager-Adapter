@@ -1,7 +1,10 @@
 package models
 
 import (
+	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -17,6 +20,11 @@ type UploadDocument struct {
 	UpdatedAt      time.Time      `json:"updated_at"`
 	StudentProfile StudentProfile `gorm:"foreignKey:StudentID" json:"-"`
 }
+
+const (
+	AddressTypePermanent = "permanent"
+	AddressTypeCurrent   = "current"
+)
 
 type Address struct {
 	ID        uint      `gorm:"primaryKey" json:"-"`
@@ -56,7 +64,6 @@ type StudentProfile struct {
 	Nationality      string                         `json:"nationality"` // Added Nationality
 	Category         string                         `gorm:"type:varchar(20)" json:"category"`
 	Income           float64                        `json:"income"`
-	PassportNumber   string                         `json:"passport_number"`  // Passport number for international students
 	IsInternational  bool                           `json:"is_international"` // Flag to mark international students
 	CreatedAt        time.Time                      `json:"created_at"`
 	UpdatedAt        time.Time                      `json:"updated_at"`
@@ -120,4 +127,29 @@ type StudentProfileInput struct {
 	Documents        []DocumentInput         `json:"documents"`
 	Addresses        []AddressInput          `json:"addresses"`
 	EducationHistory []EducationHistoryInput `json:"education_history"`
+}
+
+func (a *Address) BeforeCreate(tx *gorm.DB) error {
+	fmt.Println("BeforeCreate hook triggered")
+	fmt.Printf("StudentID: %d, Type: %s\n", a.StudentID, a.Type)
+
+	// Validate address type
+	if a.Type != AddressTypePermanent && a.Type != AddressTypeCurrent {
+		return fmt.Errorf("invalid address type: %s", a.Type)
+	}
+
+	var count int64
+	if err := tx.Model(&Address{}).
+		Where("student_id = ? AND type = ?", a.StudentID, a.Type).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("error counting existing addresses: %w", err)
+	}
+
+	fmt.Printf("Existing count for type '%s': %d\n", a.Type, count)
+
+	if count >= 1 {
+		return fmt.Errorf("a student can have only one '%s' address", a.Type)
+	}
+
+	return nil
 }

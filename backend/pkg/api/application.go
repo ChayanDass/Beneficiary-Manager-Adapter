@@ -270,6 +270,7 @@ func InitApplication(c *gin.Context) {
 		SchemeID:         req.SchemeID,
 		IsDraft:          true,
 		StudentProfileID: student.ID,
+		Status:           "panding",
 	}
 
 	if err := db.DB.Create(&application).Error; err != nil {
@@ -304,7 +305,6 @@ func InitApplication(c *gin.Context) {
 // @Router /api/v1/applications/modify-application/{user_id}/{scheme_id}/{application_id} [put]
 
 func ModifyApplication(c *gin.Context) {
-	// Get user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
@@ -313,7 +313,7 @@ func ModifyApplication(c *gin.Context) {
 		})
 		return
 	}
-	// Ensure userID is of the correct type (uint)
+
 	userIDUint, ok := userID.(uint)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
@@ -325,128 +325,149 @@ func ModifyApplication(c *gin.Context) {
 
 	schemeID := c.Param("id")
 
-	// Fetch the application based on user_id and scheme_id
 	var application models.Application
-	if err := db.DB.Where("user_id = ? AND id=?", userIDUint, schemeID).First(&application).Error; err != nil {
+	if err := db.DB.
+		Preload("User").
+		Preload("Scheme").
+		Preload("StudentProfile").
+		Preload("StudentProfile.Documents").
+		Preload("StudentProfile.EducationHistory").
+		Preload("StudentProfile.Addresses").
+		Where("user_id = ? AND id = ?", userIDUint, schemeID).
+		First(&application).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Application not found"})
 		return
 	}
 
-	// Fetch the student profile based on user_id
-	var studentProfile models.StudentProfile
-	if err := db.DB.Where("user_id = ?", userID).First(&studentProfile).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Student profile not found"})
-		return
-	}
+	studentProfile := application.StudentProfile
 
-	// Bind the updated data from the request
 	var input models.StudentProfileInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	// Check if the application is still a draft
-	if application.IsDraft {
-		// Modify student profile fields based on input
-		if input.FullName != "" {
-			studentProfile.FullName = input.FullName
-		}
-		if input.Email != "" {
-			studentProfile.Email = input.Email
-		}
-		if input.PhoneNumber != "" {
-			studentProfile.PhoneNumber = input.PhoneNumber
-		}
-		if input.DateOfBirth != nil {
-			studentProfile.DateOfBirth = *input.DateOfBirth
-		}
-		if input.Qualification != "" {
-			studentProfile.Qualification = input.Qualification
-		}
-		if input.Category != "" {
-			studentProfile.Category = input.Category
-		}
-		if input.Income != nil {
-			studentProfile.Income = *input.Income
-		}
-		if input.Nationality != "" {
-			studentProfile.Nationality = input.Nationality
-		}
-
-		// Update student's documents if any
-		for _, doc := range input.Documents {
-			newDocument := models.UploadDocument{
-				StudentID: studentProfile.ID,
-				Name:      doc.Name,
-				URL:       doc.URL,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			}
-			if err := db.DB.Create(&newDocument).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload document"})
-				return
-			}
-		}
-
-		// Update student's addresses if any
-		for _, addr := range input.Addresses {
-			newAddress := models.Address{
-				StudentID: studentProfile.ID,
-				Type:      addr.Type,
-				Street:    addr.Street,
-				City:      addr.City,
-				State:     addr.State,
-				Pincode:   addr.Pincode,
-				Country:   addr.Country,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			}
-			if err := db.DB.Create(&newAddress).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add address"})
-				return
-			}
-		}
-
-		// Update student's education history if any
-		for _, edu := range input.EducationHistory {
-			newEdu := models.StudentAcademicQualification{
-				StudentID:     studentProfile.ID,
-				Degree:        edu.Degree,
-				University:    edu.University,
-				YearOfPassing: edu.YearOfPassing,
-				Grade:         edu.Grade,
-				Course:        edu.Course,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			}
-			if err := db.DB.Create(&newEdu).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add education history"})
-				return
-			}
-		}
-
-		// Save updated student profile
-		if err := db.DB.Save(&studentProfile).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update student profile"})
-			return
-		}
-
-		// // Update the application status if needed
-		// if input.Status != "" {
-		// 	application.IsDraft = false
-		// 	application.Status = input.Status
-		// 	application.SubmittedAt = nil
-		// }
-
-		// Save updated application
-		if err := db.DB.Save(&application).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Application modified successfully"})
-	} else {
+	if !application.IsDraft {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot modify application, it is already submitted."})
+		return
 	}
+
+	// --- Update student profile fields ---
+	if input.FullName != "" {
+		studentProfile.FullName = input.FullName
+	}
+	if input.Email != "" {
+		studentProfile.Email = input.Email
+	}
+	if input.PhoneNumber != "" {
+		studentProfile.PhoneNumber = input.PhoneNumber
+	}
+	if input.DateOfBirth != nil {
+		studentProfile.DateOfBirth = *input.DateOfBirth
+	}
+	if input.Qualification != "" {
+		studentProfile.Qualification = input.Qualification
+	}
+	if input.Category != "" {
+		studentProfile.Category = input.Category
+	}
+	if input.Income != nil {
+		studentProfile.Income = *input.Income
+	}
+	if input.Nationality != "" {
+		studentProfile.Nationality = input.Nationality
+	}
+	if input.Gender != "" {
+		studentProfile.Gender = input.Gender
+	}
+	if input.AadhaarNumber != "" {
+		studentProfile.AadhaarNumber = input.AadhaarNumber
+	}
+
+	// --- Replace Documents ---
+	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.UploadDocument{})
+
+	for _, doc := range input.Documents {
+		if doc.Name == "" || doc.URL == "" {
+			continue
+		}
+
+		newDocument := models.UploadDocument{
+			StudentID: studentProfile.ID,
+			Name:      doc.Name,
+			URL:       doc.URL,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := db.DB.Create(&newDocument).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload document"})
+			return
+		}
+	}
+
+	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.Address{})
+
+	for _, addr := range input.Addresses {
+		if addr.Type == "" && addr.Street == "" && addr.City == "" && addr.State == "" && addr.Pincode == "" && addr.Country == "" {
+			continue
+		}
+
+		newAddress := models.Address{
+			StudentID: studentProfile.ID,
+			Type:      addr.Type,
+			Street:    addr.Street,
+			City:      addr.City,
+			State:     addr.State,
+			Pincode:   addr.Pincode,
+			Country:   addr.Country,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		if err := db.DB.Create(&newAddress).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "Failed to add address",
+				"details": err.Error(),
+			})
+			return
+		}
+	}
+
+	// --- Replace Education History ---
+	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.StudentAcademicQualification{})
+
+	for _, edu := range input.EducationHistory {
+		if edu.Degree == "" && edu.University == "" && edu.Course == "" && edu.Grade == "" && edu.YearOfPassing == 0 {
+			continue
+		}
+
+		newEdu := models.StudentAcademicQualification{
+			StudentID:     studentProfile.ID,
+			Degree:        edu.Degree,
+			University:    edu.University,
+			YearOfPassing: edu.YearOfPassing,
+			Grade:         edu.Grade,
+			Course:        edu.Course,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+
+		if err := db.DB.Create(&newEdu).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add education history"})
+			return
+		}
+	}
+
+	// --- Save Profile and Application ---
+	if err := db.DB.Omit("Documents", "Addresses", "EducationHistory").Save(&studentProfile).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update student profile"})
+		return
+	}
+
+	if err := db.DB.Save(&application).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Application modified successfully", "application": application})
 }

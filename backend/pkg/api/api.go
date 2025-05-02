@@ -32,7 +32,6 @@ func Router() *gin.Engine {
 
 	// Apply global middlewares
 	r.Use(middleware.CORSMiddleware())
-	r.Use(middleware.BasicAuth())
 
 	// Handle invalid routes
 	r.NoRoute(HandleInvalidUrl)
@@ -46,17 +45,19 @@ func Router() *gin.Engine {
 		{
 			scheme.GET("", GetSchemes)                 // Fetch available schemes
 			scheme.GET("/:id", GetSchemeByID)          // Get a specific scheme
-			scheme.GET("/:id/status", GetSchemeStatus) // Fetch scheme status
+			scheme.GET("/status/:id", GetSchemeStatus) // Fetch scheme status
 		}
 
 		// Application Routes
 		application := api.Group("/applications")
+		application.Use(middleware.BasicAuth())
 		{
 			application.POST("/", SubmitApplication)                       // Submit application
 			application.GET("/", GetApplications)                          // Get application status
 			application.POST("/withdraw-application", WithdrawApplication) // Submit application without user ID
 			application.POST("/init-application", InitApplication)         // Initialize application
 			application.PUT("/:id", ModifyApplication)                     // Update application
+			application.GET("/status/:id", GetApplicationStatus)           // Get application by ID
 
 		}
 

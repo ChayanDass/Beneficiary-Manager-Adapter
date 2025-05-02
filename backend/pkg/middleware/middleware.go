@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"github.com/ChayanDass/beneficiary-manager/pkg/db"
 	"github.com/ChayanDass/beneficiary-manager/pkg/models"
@@ -29,34 +31,60 @@ func CORSMiddleware() gin.HandlerFunc {
 
 func BasicAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username := c.GetHeader("X-Username")
-		password := c.GetHeader("X-Password")
 
-		if username == "" || password == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Basic ") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Missing username or password in headers",
+				"error": "Missing or invalid Authorization header",
 			})
 			return
 		}
 
-		// Find the user by username
+		// Decode base64 credentials
+		encoded := strings.TrimPrefix(authHeader, "Basic ")
+		decodedBytes, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid base64 credentials",
+			})
+			return
+		}
+
+		// Split into username and password
+		parts := strings.SplitN(string(decodedBytes), ":", 2)
+		if len(parts) != 2 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid credentials format",
+			})
+			return
+		}
+		username, password := parts[0], parts[1]
+
+		// Check user
 		var user models.User
 		if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 					"error": "Invalid username",
 				})
-				return
+			} else {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+					"error": "Database error",
+				})
 			}
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal server error",
+			return
+		}
+
+		// You should verify password here with bcrypt or plain text
+		if user.Password != password {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid password",
 			})
 			return
 		}
 
-		// Set in context
+		// Set user context
 		c.Set("username", username)
-		c.Set("password", password)
 		c.Set("user_id", user.ID)
 		c.Next()
 	}

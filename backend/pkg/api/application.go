@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -305,7 +306,6 @@ func InitApplication(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/applications/modify-application/{user_id}/{scheme_id}/{application_id} [put]
-
 func ModifyApplication(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -418,5 +418,28 @@ func ModifyApplication(c *gin.Context) {
 	}
 	// Return the success response
 
+	c.JSON(http.StatusOK, res)
+}
+
+func GetApplicationStatus(c *gin.Context) {
+	applicationID := c.Param("id")
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Code: http.StatusUnauthorized, Message: "Unauthorized"})
+		return
+	}
+	userID := userIDVal.(uint)
+	var application models.Application
+	if err := db.DB.
+		Where("id = ? AND user_id=?", applicationID, userID).
+		First(&application).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Application not found"})
+		return
+	}
+	res := models.SuccessResponse{
+		Code:    http.StatusOK,
+		Message: "Application status fetched successfully",
+		Data:    fmt.Sprintf("application status is %s", application.Status),
+	}
 	c.JSON(http.StatusOK, res)
 }

@@ -113,13 +113,13 @@ type Application struct {
 // SchemeFilter represents filter criteria
 
 type SchemeFilter struct {
-	Name                  *string    `form:"name"`
-	Status                *string    `form:"status"`
-	MinAmount             *float64   `form:"min_amount"`
-	MaxAmount             *float64   `form:"max_amount"`
-	StartAfter            *time.Time `form:"start_after"`
-	EndBefore             *time.Time `form:"end_before"`
-	Gender                *string    `form:"gender"`
+	Name                  *string    `form:"name" example:"Scholar Scheme"`
+	Status                *string    `form:"status" example:"upcoming"`
+	MinAmount             *float64   `form:"min_amount" example:"1000"`
+	MaxAmount             *float64   `form:"max_amount" example:"5000"`
+	StartAfter            *time.Time `form:"start_after" example:"2023-01-01T00:00:00Z"`
+	EndBefore             *time.Time `form:"end_before" example:"2023-12-31T23:59:59Z"`
+	Gender                *string    `form:"gender"  `
 	AcademicQualification *string    `form:"academic_qualification"`
 	IncomeLimit           *float64   `form:"income_limit"`
 	Category              *string    `form:"category"`

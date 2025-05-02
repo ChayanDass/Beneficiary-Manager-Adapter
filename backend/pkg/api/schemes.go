@@ -180,6 +180,7 @@ func GetSchemeByID(c *gin.Context) {
 }
 
 // GetSchemeStatus retrieves the status of a specific scheme by its ID
+
 func GetSchemeStatus(c *gin.Context) {
 	// Extract parameters from URL
 	id := c.Param("id")

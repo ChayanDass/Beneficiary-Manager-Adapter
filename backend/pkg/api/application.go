@@ -107,6 +107,7 @@ func SubmitApplication(c *gin.Context) {
 	}
 	now := time.Now()
 	application.IsDraft = false
+	application.Status = "submitted"
 	application.SubmittedAt = &now
 
 	// ✅ Check completeness before submission
@@ -180,6 +181,7 @@ func WithdrawApplication(c *gin.Context) {
 	}
 
 	application.IsDraft = true
+	application.Status = "draft"
 	application.SubmittedAt = nil
 
 	if err := db.DB.Save(&application).Error; err != nil {
@@ -270,7 +272,7 @@ func InitApplication(c *gin.Context) {
 		SchemeID:         req.SchemeID,
 		IsDraft:          true,
 		StudentProfileID: student.ID,
-		Status:           "panding",
+		Status:           "draft",
 	}
 
 	if err := db.DB.Create(&application).Error; err != nil {
@@ -409,10 +411,12 @@ func ModifyApplication(c *gin.Context) {
 		return
 	}
 
-	// if err := db.DB.Save(&application).Error; err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
-	// 	return
-	// }
+	res := models.SuccessResponse{
+		Code:    http.StatusOK,
+		Message: "Application modified successfully",
+		Data:    &application,
+	}
+	// Return the success response
 
-	c.JSON(http.StatusOK, gin.H{"message": "Application modified successfully", "application": application})
+	c.JSON(http.StatusOK, res)
 }

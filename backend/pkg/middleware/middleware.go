@@ -3,7 +3,10 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/ChayanDass/beneficiary-manager/pkg/db"
+	"github.com/ChayanDass/beneficiary-manager/pkg/models"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // CORSMiddleware is a middleware function for CORS.
@@ -36,11 +39,25 @@ func BasicAuth() gin.HandlerFunc {
 			return
 		}
 
-		// You might want to validate the user against DB here
+		// Find the user by username
+		var user models.User
+		if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Invalid username",
+				})
+				return
+			}
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal server error",
+			})
+			return
+		}
 
 		// Set in context
 		c.Set("username", username)
 		c.Set("password", password)
+		c.Set("user_id", user.ID)
 		c.Next()
 	}
 }

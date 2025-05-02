@@ -52,9 +52,10 @@ func Router() *gin.Engine {
 		// Application Routes
 		application := api.Group("/applications")
 		{
-			application.POST("", SubmitApplication) // Submit application
-			application.GET("/:id", GetApplication) // Get application status
-			application.GET("/:id/status", GetApplicationStatus)
+			application.POST("/", SubmitApplication)                       // Submit application
+			application.GET("/", GetApplications)                          // Get application status
+			application.POST("/withdraw-application", WithdrawApplication) // Submit application without user ID
+			// application.GET("/:id/status", GetApplicationStatus)
 
 		}
 

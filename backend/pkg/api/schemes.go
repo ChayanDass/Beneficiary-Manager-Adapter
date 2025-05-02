@@ -175,7 +175,6 @@ func GetSchemeByID(c *gin.Context) {
 	c.JSON(http.StatusOK, models.SuccessResponse{
 		Code:    http.StatusOK,
 		Message: "Scheme retrieved successfully",
-		Data:    scheme,
 	})
 }
 
@@ -226,6 +225,5 @@ func GetSchemeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, models.SuccessResponse{
 		Code:    http.StatusOK,
 		Message: "Scheme status retrieved successfully",
-		Data:    scheme.Status,
 	})
 }

@@ -4,54 +4,77 @@ import (
 	"errors"
 	"fmt"
 
-	"gorm.io/gorm"
+	"github.com/ChayanDass/beneficiary-manager/pkg/models"
 )
 
-func StartApplication(db *gorm.DB, userID uint, schemeID uint) (*Application, error) {
-	var app Application
-	err := db.Where("user_id = ? AND scheme_id = ? AND is_draft = true", userID, schemeID).First(&app).Error
+func CheckApplicationCompleteness(app *models.Application) error {
+	profile := app.StudentProfile
 
-	if err == nil {
-		// Draft already exists, return it
-		return &app, nil
+	// Basic Profile Checks
+	if profile.FullName == "" {
+		return errors.New("full name is missing")
+	}
+	if profile.Email == "" {
+		return errors.New("email is missing")
+	}
+	if profile.AadhaarNumber == "" {
+		return errors.New("aadhaar number is missing")
+	}
+	if profile.PhoneNumber == "" {
+		return errors.New("phone number is missing")
+	}
+	if profile.DateOfBirth.IsZero() {
+		return errors.New("date of birth is missing")
+	}
+	if profile.Qualification == "" {
+		return errors.New("qualification is missing")
+	}
+	if profile.Nationality == "" {
+		return errors.New("nationality is missing")
+	}
+	if profile.Category == "" {
+		return errors.New("category is missing")
+	}
+	if profile.Income <= 0 {
+		return errors.New("income must be greater than 0")
 	}
 
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
+	// Documents Check
+	if len(profile.Documents) == 0 {
+		return errors.New("no documents uploaded")
 	}
-
-	// Check or create StudentProfile
-	var profile StudentProfile
-	if err := db.Where("user_id = ?", userID).First(&profile).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-		// Create a new empty StudentProfile
-		profile = StudentProfile{
-			UserID:          userID,
-			FullName:        "", // can be filled later
-			Email:           "",
-			PhoneNumber:     "",
-			Gender:          "",
-			Qualification:   "",
-			Nationality:     "",
-			Income:          0,
-			IsInternational: false,
+	for i, doc := range profile.Documents {
+		if doc.Name == "" || doc.URL == "" {
+			return fmt.Errorf("document %d is incomplete", i+1)
 		}
-		if err := db.Create(&profile).Error; err != nil {
-			return nil, fmt.Errorf("failed to create student profile: %v", err)
+	}
+
+	// Education Check
+	if len(profile.EducationHistory) == 0 {
+		return errors.New("no education history found")
+	}
+	for i, edu := range profile.EducationHistory {
+		if edu.Degree == "" || edu.University == "" || edu.YearOfPassing == 0 {
+			return fmt.Errorf("education history %d is incomplete", i+1)
 		}
-	} else if err != nil {
-		return nil, err
 	}
 
-	// Create a new Application in draft state
-	app = Application{
-		UserID:           userID,
-		SchemeID:         schemeID,
-		StudentProfileID: profile.ID,
-		IsDraft:          true,
+	// Address Check
+	if len(profile.Addresses) == 0 {
+		return errors.New("no addresses provided")
 	}
-	if err := db.Create(&app).Error; err != nil {
-		return nil, err
+	hasPermanent := false
+	for _, addr := range profile.Addresses {
+		if addr.Type == "permanent" {
+			hasPermanent = true
+		}
+		if addr.Street == "" || addr.City == "" || addr.State == "" || addr.Pincode == "" || addr.Country == "" {
+			return errors.New("an address entry is incomplete")
+		}
+	}
+	if !hasPermanent {
+		return errors.New("permanent address is required")
 	}
 
-	return &app, nil
+	return nil
 }

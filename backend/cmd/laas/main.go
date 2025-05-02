@@ -50,7 +50,14 @@ func main() {
 	if err := db.DB.AutoMigrate(&models.Application{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
+	if err := db.DB.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
 
+	}
+	if err := db.DB.AutoMigrate(&models.StudentAcademicQualification{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+
+	}
 	if err := db.DB.AutoMigrate(&models.Scheme{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
@@ -61,6 +68,11 @@ func main() {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
 	if err := db.DB.AutoMigrate(&models.StudentProfile{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+
+	}
+
+	if err := db.DB.AutoMigrate(&models.UploadDocument{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
 

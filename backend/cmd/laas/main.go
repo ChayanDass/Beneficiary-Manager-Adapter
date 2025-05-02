@@ -1,12 +1,9 @@
 // @title Beneficiary Manager API
 // @version 1.0
-// @description This is a sample API for beneficiary management.
+// @description This is a backend service for managing schemes, users, and applications.
+// @contact.name Chayan
 // @host localhost:8080
-// @BasePath /api/v1
-// @schemes http https
-// @accept json
-// @produce json
-// @openapi 3.0.0
+// @BasePath /api
 package main
 
 import (

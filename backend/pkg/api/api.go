@@ -1,9 +1,3 @@
-// @title Beneficiary Manager API
-// @version 1.0
-// @description This is a sample API for beneficiary management.
-// @host localhost:8080
-// @BasePath /api/v1
-
 package api
 
 import (
@@ -32,9 +26,9 @@ func Router() *gin.Engine {
 
 	// Apply global middlewares
 	r.Use(middleware.CORSMiddleware())
-
 	// Handle invalid routes
 	r.NoRoute(HandleInvalidUrl)
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// API v1 group
@@ -62,7 +56,6 @@ func Router() *gin.Engine {
 		}
 
 	}
-
 	return r
 }
 

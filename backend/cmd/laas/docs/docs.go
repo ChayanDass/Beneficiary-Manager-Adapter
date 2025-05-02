@@ -5,12 +5,6 @@ import "github.com/swaggo/swag"
 
 const docTemplate = `{
     "schemes": {{ marshal .Schemes }},
-    "consumes": [
-        "application/json"
-    ],
-    "produces": [
-        "application/json"
-    ],
     "swagger": "2.0",
     "info": {
         "description": "{{escape .Description}}",
@@ -20,17 +14,207 @@ const docTemplate = `{
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
-    "paths": {}
+    "paths": {
+        "/api/schemes/status/{id}": {
+            "get": {
+                "description": "Get the current status of a scheme by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scheme"
+                ],
+                "summary": "Get Scheme Status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scheme ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Scheme"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.AcademicQualification": {
+            "type": "string",
+            "enum": [
+                "None",
+                "Class-X",
+                "Class-XII",
+                "Diploma",
+                "Graduate",
+                "Post-Graduate"
+            ],
+            "x-enum-varnames": [
+                "AcademicQualificationNone",
+                "AcademicQualificationClassX",
+                "AcademicQualificationClassXII",
+                "AcademicQualificationDiploma",
+                "AcademicQualificationGraduate",
+                "AcademicQualificationPostGraduate"
+            ]
+        },
+        "models.Category": {
+            "type": "string",
+            "enum": [
+                "General",
+                "SC",
+                "ST",
+                "OBC",
+                "Other"
+            ],
+            "x-enum-varnames": [
+                "CategoryGeneral",
+                "CategorySC",
+                "CategoryST",
+                "CategoryOBC",
+                "CategoryOther"
+            ]
+        },
+        "models.Eligibility": {
+            "type": "object",
+            "properties": {
+                "academic_qualification": {
+                    "$ref": "#/definitions/models.AcademicQualification"
+                },
+                "age_max": {
+                    "type": "integer"
+                },
+                "age_min": {
+                    "type": "integer"
+                },
+                "category": {
+                    "$ref": "#/definitions/models.Category"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "documents_required": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "gender": {
+                    "$ref": "#/definitions/models.Gender"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "income_limit": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Gender": {
+            "type": "string",
+            "enum": [
+                "Male",
+                "Female",
+                "Other"
+            ],
+            "x-enum-varnames": [
+                "GenderMale",
+                "GenderFemale",
+                "GenderOther"
+            ]
+        },
+        "models.Scheme": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "application_link": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "eligibility": {
+                    "$ref": "#/definitions/models.Eligibility"
+                },
+                "eligibility_id": {
+                    "description": "foreign key to Eligibility",
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
-	Schemes:          []string{"http", "https"},
-	Title:            "Beneficiary Manager API",
-	Description:      "This is a sample API for beneficiary management.",
+	Version:          "",
+	Host:             "",
+	BasePath:         "",
+	Schemes:          []string{},
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

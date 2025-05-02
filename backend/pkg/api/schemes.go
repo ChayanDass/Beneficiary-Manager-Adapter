@@ -12,9 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetSchemes retrieves all schemes with optional filters
-// GetSchemes retrieves all schemes with optional filters
-// GetSchemes retrieves all schemes with optional filters
 func GetSchemes(c *gin.Context) {
 	page, _ := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
@@ -150,7 +147,6 @@ func GetSchemes(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// GetSchemeByID retrieves a specific scheme by its ID
 func GetSchemeByID(c *gin.Context) {
 	id := c.Param("id")
 	var scheme models.Scheme
@@ -178,7 +174,16 @@ func GetSchemeByID(c *gin.Context) {
 	})
 }
 
-// GetSchemeStatus retrieves the status of a specific scheme by its ID
+// @Summary Get Scheme Status
+// @Description Get the current status of a scheme by its ID
+// @Tags scheme
+// @Accept json
+// @Produce json
+// @Param id path string true "Scheme ID"
+// @Success 200 {object} models.Scheme
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/schemes/status/{id} [get]
 func GetSchemeStatus(c *gin.Context) {
 	// Extract parameters from URL
 	id := c.Param("id")

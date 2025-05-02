@@ -198,19 +198,6 @@ func WithdrawApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// InitApplication initializes the application form for a user
-// @Summary Initialize application for a user
-// @Description Initialize application with all required data like student profile, scheme, etc.
-// @Tags application
-// @Accept json
-// @Produce json
-// @Param user_id path int true "User ID"
-// @Param scheme_id path int true "Scheme ID"
-// @Security BasicAuth
-// @Success 200 {object} models.Application
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/applications/init-application/{user_id}/{scheme_id} [post]
 func InitApplication(c *gin.Context) {
 	var req models.InitApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -290,22 +277,6 @@ func InitApplication(c *gin.Context) {
 	})
 }
 
-// ModifyApplication allows modifying the application before submission
-// @Summary Modify application before submission
-// @Description Modify the application details, including student profile, scheme, etc., before final submission
-// @Tags application
-// @Accept json
-// @Produce json
-// @Param user_id path int true "User ID"
-// @Param scheme_id path int true "Scheme ID"
-// @Param application_id path int true "Application ID"
-// @Param application body models.Application true "Application details"
-// @Security BasicAuth
-// @Success 200 {object} models.Application
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/applications/modify-application/{user_id}/{scheme_id}/{application_id} [put]
 func ModifyApplication(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {

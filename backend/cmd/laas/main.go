@@ -47,10 +47,6 @@ func main() {
 	db.Connect(dbhost, port, user, dbname, password)
 	r := api.Router()
 
-	if err := db.DB.AutoMigrate(&models.User{}); err != nil {
-		log.Fatalf("Failed to automigrate database: %v", err)
-	}
-
 	if err := db.DB.AutoMigrate(&models.Application{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
@@ -59,6 +55,12 @@ func main() {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
 	if err := db.DB.AutoMigrate(&models.Eligibility{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+	}
+	if err := db.DB.AutoMigrate(&models.Address{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+	}
+	if err := db.DB.AutoMigrate(&models.StudentProfile{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
 	}
 

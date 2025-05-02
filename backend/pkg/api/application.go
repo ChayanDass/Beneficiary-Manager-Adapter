@@ -20,6 +20,7 @@ import (
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/applications [post]
+
 func SubmitApplication(c *gin.Context) {
 	var application models.Application
 
@@ -27,16 +28,6 @@ func SubmitApplication(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid input data",
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	var user models.User
-	if err := db.DB.First(&user, application.UserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, models.ErrorResponse{
-			Code:    http.StatusNotFound,
-			Message: "User not found",
 			Error:   err.Error(),
 		})
 		return
@@ -51,18 +42,6 @@ func SubmitApplication(c *gin.Context) {
 		})
 		return
 	}
-
-	var existingApplication models.Application
-	if err := db.DB.Where("user_id = ? AND scheme_id = ?", application.UserID, application.SchemeID).First(&existingApplication).Error; err == nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "You have already submitted an application for this scheme",
-			Error:   "Duplicate application",
-		})
-		return
-	}
-
-	application.Status = "pending"
 
 	if err := db.DB.Create(&application).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -105,15 +84,6 @@ func GetApplication(c *gin.Context) {
 		return
 	}
 
-	if application.User.ID == 0 {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "User not found for the application",
-			Error:   "User data is missing or incorrect",
-		})
-		return
-	}
-
 	c.JSON(http.StatusOK, models.SuccessResponse{
 		Code:    http.StatusOK,
 		Message: "Application fetched successfully",
@@ -144,11 +114,4 @@ func GetApplicationStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SuccessResponse{
-		Code:    http.StatusOK,
-		Message: "Application status fetched successfully",
-		Data: map[string]string{
-			"status": application.Status,
-		},
-	})
 }

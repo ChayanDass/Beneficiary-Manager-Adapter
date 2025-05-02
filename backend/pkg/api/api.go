@@ -57,11 +57,6 @@ func Router() *gin.Engine {
 
 		}
 
-		// Credential Routes
-		credential := api.Group("/credentials")
-		{
-			credential.POST("", SubmitCredential) // Upload user credentials
-		}
 	}
 
 	return r

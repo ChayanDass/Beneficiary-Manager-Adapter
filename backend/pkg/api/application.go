@@ -348,7 +348,12 @@ func ModifyApplication(c *gin.Context) {
 	}
 
 	if !application.IsDraft {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot modify application, it is already submitted."})
+		c.JSON(http.StatusForbidden,
+			models.ErrorResponse{
+				Code:    http.StatusForbidden,
+				Message: "Cannot modify application, it is already submitted.",
+				Error:   "Application is already submitted",
+			})
 		return
 	}
 
@@ -383,91 +388,31 @@ func ModifyApplication(c *gin.Context) {
 	if input.AadhaarNumber != "" {
 		studentProfile.AadhaarNumber = input.AadhaarNumber
 	}
-
-	// --- Replace Documents ---
-	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.UploadDocument{})
-
-	for _, doc := range input.Documents {
-		if doc.Name == "" || doc.URL == "" {
-			continue
-		}
-
-		newDocument := models.UploadDocument{
-			StudentID: studentProfile.ID,
-			Name:      doc.Name,
-			URL:       doc.URL,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
-		if err := db.DB.Create(&newDocument).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload document"})
-			return
-		}
-	}
-
-	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.Address{})
-
-	for _, addr := range input.Addresses {
-		if addr.Type == "" && addr.Street == "" && addr.City == "" && addr.State == "" && addr.Pincode == "" && addr.Country == "" {
-			continue
-		}
-
-		newAddress := models.Address{
-			StudentID: studentProfile.ID,
-			Type:      addr.Type,
-			Street:    addr.Street,
-			City:      addr.City,
-			State:     addr.State,
-			Pincode:   addr.Pincode,
-			Country:   addr.Country,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
-
-		if err := db.DB.Create(&newAddress).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Failed to add address",
-				"details": err.Error(),
-			})
-			return
-		}
-	}
-
-	// --- Replace Education History ---
-	db.DB.Where("student_id = ?", studentProfile.ID).Delete(&models.StudentAcademicQualification{})
-
-	for _, edu := range input.EducationHistory {
-		if edu.Degree == "" && edu.University == "" && edu.Course == "" && edu.Grade == "" && edu.YearOfPassing == 0 {
-			continue
-		}
-
-		newEdu := models.StudentAcademicQualification{
-			StudentID:     studentProfile.ID,
-			Degree:        edu.Degree,
-			University:    edu.University,
-			YearOfPassing: edu.YearOfPassing,
-			Grade:         edu.Grade,
-			Course:        edu.Course,
-			CreatedAt:     time.Now(),
-			UpdatedAt:     time.Now(),
-		}
-
-		if err := db.DB.Create(&newEdu).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add education history"})
-			return
-		}
-	}
-
-	// --- Save Profile and Application ---
 	if err := db.DB.Omit("Documents", "Addresses", "EducationHistory").Save(&studentProfile).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update student profile"})
 		return
 	}
 
-	if err := db.DB.Save(&application).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
+	if err := utils.UpsertStudentDocuments(db.DB, studentProfile.ID, input.Documents); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := utils.UpsertStudentAddresses(db.DB, studentProfile.ID, input.Addresses); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to upsert address",
+			"details": err.Error(),
+		})
+		return
+	}
+	if err := utils.UpsertEducationHistory(db.DB, studentProfile.ID, input.EducationHistory); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// if err := db.DB.Save(&application).Error; err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update application"})
+	// 	return
+	// }
 
 	c.JSON(http.StatusOK, gin.H{"message": "Application modified successfully", "application": application})
 }

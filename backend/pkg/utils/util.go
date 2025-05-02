@@ -3,8 +3,10 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ChayanDass/beneficiary-manager/pkg/models"
+	"gorm.io/gorm"
 )
 
 func CheckApplicationCompleteness(app *models.Application) error {
@@ -139,5 +141,134 @@ func CheckApplicationCompleteness(app *models.Application) error {
 		}
 	}
 
+	return nil
+}
+
+func UpsertStudentAddresses(db *gorm.DB, studentID uint, addresses []models.AddressInput) error {
+	for _, addr := range addresses {
+		if addr.Type != "permanent" && addr.Type != "current" {
+			continue // we only process known types
+		}
+
+		// Skip fully empty addresses
+		if addr.Street == "" && addr.City == "" && addr.State == "" && addr.Pincode == "" && addr.Country == "" {
+			continue
+		}
+
+		var existing models.Address
+		err := db.Where("student_id = ? AND type = ?", studentID, addr.Type).First(&existing).Error
+		fmt.Println("Existing address found:", existing)
+
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+
+		if err == gorm.ErrRecordNotFound {
+			// Create new address for the type
+			newAddr := models.Address{
+				StudentID: studentID,
+				Type:      addr.Type,
+				Street:    addr.Street,
+				City:      addr.City,
+				State:     addr.State,
+				Pincode:   addr.Pincode,
+				Country:   addr.Country,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if err := db.Create(&newAddr).Error; err != nil {
+				return err
+			}
+		} else {
+			// Update the existing address
+			existing.Street = addr.Street
+			existing.City = addr.City
+			existing.State = addr.State
+			existing.Pincode = addr.Pincode
+			existing.Country = addr.Country
+			existing.UpdatedAt = time.Now()
+
+			if err := db.Save(&existing).Error; err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func UpsertStudentDocuments(db *gorm.DB, studentID uint, documents []models.DocumentInput) error {
+	for _, doc := range documents {
+		if doc.Name == "" || doc.URL == "" {
+			continue
+		}
+
+		var existing models.UploadDocument
+		err := db.Where("student_id = ? AND name = ?", studentID, doc.Name).First(&existing).Error
+
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return fmt.Errorf("error checking document: %w", err)
+		}
+
+		if err == gorm.ErrRecordNotFound {
+			newDoc := models.UploadDocument{
+				StudentID: studentID,
+				Name:      doc.Name,
+				URL:       doc.URL,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if err := db.Create(&newDoc).Error; err != nil {
+				return fmt.Errorf("failed to create document: %w", err)
+			}
+		} else {
+			existing.URL = doc.URL
+			existing.UpdatedAt = time.Now()
+			if err := db.Save(&existing).Error; err != nil {
+				return fmt.Errorf("failed to update document: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func UpsertEducationHistory(db *gorm.DB, studentID uint, history []models.EducationHistoryInput) error {
+	for _, edu := range history {
+		if edu.Degree == "" && edu.University == "" && edu.Course == "" && edu.Grade == "" && edu.YearOfPassing == 0 {
+			continue
+		}
+
+		var existing models.StudentAcademicQualification
+		err := db.Where("student_id = ? AND degree = ? AND university = ? AND course = ?",
+			studentID, edu.Degree, edu.University, edu.Course).First(&existing).Error
+
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return fmt.Errorf("error checking education history: %w", err)
+		}
+
+		if err == gorm.ErrRecordNotFound {
+			newEdu := models.StudentAcademicQualification{
+				StudentID:     studentID,
+				Degree:        edu.Degree,
+				University:    edu.University,
+				YearOfPassing: edu.YearOfPassing,
+				Grade:         edu.Grade,
+				Course:        edu.Course,
+				CreatedAt:     time.Now(),
+				UpdatedAt:     time.Now(),
+			}
+			if err := db.Create(&newEdu).Error; err != nil {
+				return fmt.Errorf("failed to create education record: %w", err)
+			}
+		} else {
+			existing.YearOfPassing = edu.YearOfPassing
+			existing.Grade = edu.Grade
+			existing.UpdatedAt = time.Now()
+
+			if err := db.Save(&existing).Error; err != nil {
+				return fmt.Errorf("failed to update education record: %w", err)
+			}
+		}
+	}
 	return nil
 }

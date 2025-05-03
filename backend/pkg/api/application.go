@@ -12,6 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// GetApplications retrieves all applications for the authenticated user.
+// @Summary Get user applications
+// @Description Fetches all applications associated with the authenticated user.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.Application "List of applications"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 404 {object} models.ErrorResponse "No applications found for this user"
+// @Failure 500 {object} models.ErrorResponse "Failed to fetch applications"
+// @Router /applications [get]
 func GetApplications(c *gin.Context) {
 	var applications []models.Application
 
@@ -64,6 +75,19 @@ func GetApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
+// SubmitApplication submits an existing draft application for the authenticated user.
+// @Summary Submit application
+// @Description Submits a draft application after validating its completeness.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Param request body models.SubmitExistingApplicationRequest true "Submit application request"
+// @Success 200 {object} models.SuccessResponse "Application submitted successfully"
+// @Failure 400 {object} models.ErrorResponse "Invalid request or application is incomplete"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 404 {object} models.ErrorResponse "Application not found"
+// @Failure 500 {object} models.ErrorResponse "Failed to submit application"
+// @Router /applications/submit [post]
 func SubmitApplication(c *gin.Context) {
 	var req models.SubmitExistingApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -143,6 +167,20 @@ func SubmitApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// WithdrawApplication withdraws a submitted application for the authenticated user.
+//
+// @Summary Withdraw application
+// @Description Withdraws a submitted application and marks it as a draft.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Param request body models.SubmitExistingApplicationRequest true "Withdraw application request"
+// @Success 200 {object} models.SuccessResponse "Application withdrawn successfully"
+// @Failure 400 {object} models.ErrorResponse "Invalid request or application cannot be withdrawn"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 404 {object} models.ErrorResponse "Application not found"
+// @Failure 500 {object} models.ErrorResponse "Failed to withdraw application"
+// @Router /applications/withdraw [post]
 func WithdrawApplication(c *gin.Context) {
 	var req models.SubmitExistingApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -198,6 +236,21 @@ func WithdrawApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// InitApplication initializes a new draft application for the authenticated user.
+//
+// @Summary Initialize application
+// @Description Creates a new draft application for a specific scheme.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Param request body models.InitApplicationRequest true "Initialize application request"
+// @Success 201 {object} models.SuccessResponse "Application initialized successfully"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 404 {object} models.ErrorResponse "Scheme not found"
+// @Failure 409 {object} models.ErrorResponse "Application already exists"
+// @Failure 500 {object} models.ErrorResponse "Failed to initialize application"
+// @Router /applications/init [post]
 func InitApplication(c *gin.Context) {
 	var req models.InitApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -277,6 +330,22 @@ func InitApplication(c *gin.Context) {
 	})
 }
 
+// ModifyApplication modifies an existing draft application for the authenticated user.
+//
+// @Summary Modify application
+// @Description Updates the details of a draft application, including the student profile and related data.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Param id path string true "Application ID"
+// @Param request body models.StudentProfileInput true "Modify application request"
+// @Success 200 {object} models.SuccessResponse "Application modified successfully"
+// @Failure 400 {object} models.ErrorResponse "Invalid input"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 403 {object} models.ErrorResponse "Cannot modify application, it is already submitted"
+// @Failure 404 {object} models.ErrorResponse "Application not found"
+// @Failure 500 {object} models.ErrorResponse "Failed to update application"
+// @Router /applications/{id}/modify [put]
 func ModifyApplication(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -392,6 +461,18 @@ func ModifyApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetApplicationStatus retrieves the status of a specific application for the authenticated user.
+//
+// @Summary Get application status
+// @Description Fetches the status of an application based on the application ID and the authenticated user's ID.
+// @Tags Applications
+// @Accept json
+// @Produce json
+// @Param id path string true "Application ID"
+// @Success 200 {object} models.SuccessResponse "Application status fetched successfully"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized, user ID not found in context"
+// @Failure 404 {object} models.ErrorResponse "Application not found"
+// @Router /applications/{id}/status [get]
 func GetApplicationStatus(c *gin.Context) {
 	applicationID := c.Param("id")
 	userIDVal, exists := c.Get("user_id")

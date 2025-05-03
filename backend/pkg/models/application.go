@@ -131,9 +131,6 @@ type StudentProfileInput struct {
 }
 
 func (a *Address) BeforeCreate(tx *gorm.DB) error {
-	fmt.Println("BeforeCreate hook triggered")
-	fmt.Printf("StudentID: %d, Type: %s\n", a.StudentID, a.Type)
-
 	// Validate address type
 	if a.Type != AddressTypePermanent && a.Type != AddressTypeCurrent {
 		return fmt.Errorf("invalid address type: %s", a.Type)
@@ -151,7 +148,6 @@ func (a *Address) BeforeCreate(tx *gorm.DB) error {
 	if count >= 1 {
 		return fmt.Errorf("a student can have only one '%s' address", a.Type)
 	}
-
 	return nil
 }
 

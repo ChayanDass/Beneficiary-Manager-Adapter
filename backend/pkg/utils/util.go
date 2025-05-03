@@ -3,9 +3,13 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"math"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/ChayanDass/beneficiary-manager/pkg/models"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -358,4 +362,42 @@ func ApplySchemeFilters(query *gorm.DB, filter models.SchemeFilter) *gorm.DB {
 	}
 
 	return query
+}
+
+func GetPagination(c *gin.Context) (models.PaginationInput, int64) {
+	page, _ := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
+	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	return models.PaginationInput{
+		Page:  page,
+		Limit: limit,
+	}, (page - 1) * limit
+}
+
+func BuildPaginationMeta(c *gin.Context, pagination models.PaginationInput, totalCount int64) *models.PaginationMeta {
+	totalPages := int64(math.Ceil(float64(totalCount) / float64(pagination.Limit)))
+
+	params := c.Request.URL.Query()
+	basePath := c.Request.URL.Path
+
+	var previous, next string
+	if pagination.Page > 1 {
+		previous = buildURL(basePath, params, pagination.Page-1)
+	}
+	if pagination.Page < totalPages {
+		next = buildURL(basePath, params, pagination.Page+1)
+	}
+
+	return &models.PaginationMeta{
+		ResourceCount: int(totalCount),
+		TotalPages:    totalPages,
+		Page:          pagination.Page,
+		Limit:         pagination.Limit,
+		Previous:      previous,
+		Next:          next,
+	}
+}
+
+func buildURL(basePath string, params url.Values, page int64) string {
+	params.Set("page", strconv.FormatInt(page, 10))
+	return basePath + "?" + params.Encode()
 }

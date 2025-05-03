@@ -1,15 +1,5 @@
 package models
 
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
-
-// ------------------ Enums ------------------
-
-// ------------------ Pagination ------------------
-
 // PaginationMeta contains metadata for paginated responses
 type PaginationMeta struct {
 	ResourceCount int    `json:"resource_count" example:"200"`
@@ -64,24 +54,4 @@ type SchemeResponse struct {
 	Message string          `json:"message"`
 	Data    interface{}     `json:"data,omitempty"`
 	Meta    *PaginationMeta `json:"meta,omitempty"`
-}
-
-func (a *Application) BeforeCreate(tx *gorm.DB) (err error) {
-	if a.IsDraft {
-		a.SubmittedAt = nil
-	} else {
-		if a.SubmittedAt == nil {
-			now := time.Now()
-			a.SubmittedAt = &now
-		}
-	}
-	return
-}
-
-type InitApplicationRequest struct {
-	SchemeID uint `json:"scheme_id" binding:"required"`
-}
-
-type SubmitExistingApplicationRequest struct {
-	ApplicationID uint `json:"application_id" binding:"required"`
 }

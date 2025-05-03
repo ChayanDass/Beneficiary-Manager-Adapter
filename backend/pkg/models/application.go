@@ -154,3 +154,23 @@ func (a *Address) BeforeCreate(tx *gorm.DB) error {
 
 	return nil
 }
+
+func (a *Application) BeforeCreate(tx *gorm.DB) (err error) {
+	if a.IsDraft {
+		a.SubmittedAt = nil
+	} else {
+		if a.SubmittedAt == nil {
+			now := time.Now()
+			a.SubmittedAt = &now
+		}
+	}
+	return
+}
+
+type InitApplicationRequest struct {
+	SchemeID uint `json:"scheme_id" binding:"required"`
+}
+
+type SubmitExistingApplicationRequest struct {
+	ApplicationID uint `json:"application_id" binding:"required"`
+}

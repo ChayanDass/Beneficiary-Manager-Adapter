@@ -15,6 +15,7 @@ import (
 	"github.com/ChayanDass/beneficiary-manager/pkg/db"
 	"github.com/ChayanDass/beneficiary-manager/pkg/models"
 	"github.com/joho/godotenv"
+	"gorm.io/gorm/clause"
 )
 
 // declare flags to input the basic requirement of database connection and the path of the data file
@@ -71,6 +72,17 @@ func main() {
 
 	if err := db.DB.AutoMigrate(&models.UploadDocument{}); err != nil {
 		log.Fatalf("Failed to automigrate database: %v", err)
+	}
+
+	if err := db.DB.AutoMigrate(&models.DocumentsRequired{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+	}
+
+	if err := db.DB.AutoMigrate(&models.EligibilityDocumentMap{}); err != nil {
+		log.Fatalf("Failed to automigrate database: %v", err)
+	}
+	if err := db.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.DefaultDocumentsRequired).Error; err != nil {
+		log.Fatalf("Failed to seed database with default documents types: %s", err.Error())
 	}
 
 	if err := r.Run(); err != nil {

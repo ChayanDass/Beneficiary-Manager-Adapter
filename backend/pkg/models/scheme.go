@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -51,6 +50,20 @@ const (
 	DocumentOther                 Document = "other"
 )
 
+// DefaultDocumentsRequired is a shared list of default documents
+var DefaultDocumentsRequired = []DocumentsRequired{
+	{Name: "aadhar_card", Description: "Aadhar Card", Type: "identity"},
+	{Name: "pan_card", Description: "PAN Card", Type: "identity"},
+	{Name: "driving_license", Description: "Driving License", Type: "identity"},
+	{Name: "class_x_certificate", Description: "Class X Certificate", Type: "education"},
+	{Name: "class_xii_certificate", Description: "Class XII Certificate", Type: "education"},
+	{Name: "diploma_certificate", Description: "Diploma Certificate", Type: "education"},
+	{Name: "graduation_certificate", Description: "Graduation Certificate", Type: "education"},
+	{Name: "post_grad_certificate", Description: "Post Graduation Certificate", Type: "education"},
+	{Name: "passport", Description: "Passport", Type: "identity"},
+	{Name: "other", Description: "Other Document", Type: "other"},
+}
+
 // ------------------ Core Models ------------------
 
 // Scheme represents a scholarship scheme
@@ -70,18 +83,38 @@ type Scheme struct {
 	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
-// Eligibility represents eligibility criteria
+// DocumentsRequired represents the document structure.
+type DocumentsRequired struct {
+	ID          uint   `gorm:"primaryKey" json:"-"`
+	Name        string `gorm:"uniqueIndex"` // Unique constraint for the document name
+	Description string
+	Type        string
+	// Relations
+	EligibilityDocuments []EligibilityDocumentMap `gorm:"foreignKey:DocumentID" json:"-"`
+}
+
+// EligibilityDocumentMap represents the many-to-many relationship between Eligibility and DocumentsRequired
+type EligibilityDocumentMap struct {
+	ID            uint              `gorm:"primaryKey" json:"id"`
+	EligibilityID uint              `json:"-"`
+	DocumentID    uint              `json:"-"`
+	IsMandatory   bool              `json:"is_mandatory"`
+	Eligibility   Eligibility       `gorm:"foreignKey:EligibilityID" json:"-"`
+	Document      DocumentsRequired `gorm:"foreignKey:DocumentID"`
+}
+
+// Eligibility represents eligibility criteria for schemes.
 type Eligibility struct {
-	ID                    uint                  `gorm:"primaryKey" json:"id"`
-	Gender                Gender                `gorm:"type:varchar(10)" json:"gender"`
-	AgeMin                int                   `json:"age_min"`
-	AgeMax                int                   `json:"age_max"`
-	IncomeLimit           float64               `json:"income_limit"`
-	AcademicQualification AcademicQualification `gorm:"type:varchar(20)" json:"academic_qualification"`
-	Category              Category              `gorm:"type:varchar(20)" json:"category"`
-	DocumentsRequired     datatypes.JSON        `gorm:"type:jsonb" json:"documents_required"`
-	CreatedAt             time.Time             `json:"created_at"`
-	UpdatedAt             time.Time             `json:"updated_at"`
+	ID                    uint                     `gorm:"primaryKey" json:""`
+	Gender                Gender                   `gorm:"type:varchar(10)" json:"gender"`
+	AgeMin                int                      `json:"age_min"`
+	AgeMax                int                      `json:"age_max"`
+	IncomeLimit           float64                  `json:"income_limit"`
+	AcademicQualification AcademicQualification    `gorm:"type:varchar(20)" json:"academic_qualification"`
+	Category              Category                 `gorm:"type:varchar(20)" json:"category"`
+	DocumentMappings      []EligibilityDocumentMap `gorm:"foreignKey:EligibilityID" json:"documents_required"`
+	CreatedAt             time.Time                `json:"created_at"`
+	UpdatedAt             time.Time                `json:"updated_at"`
 }
 
 // ------------------ Filtering ------------------

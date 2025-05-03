@@ -9,6 +9,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// CheckApplicationCompleteness validates the completeness of a student's application.
+// It checks all required fields if the application is not a draft, and validates provided fields if it is a draft.
+// Returns an error if any required field is missing or invalid.
+//
+// Parameters:
+// - app (*models.Application): The application to validate.
+//
+// Returns:
+// - error: An error describing the missing or invalid field, or nil if the application is complete.
+
 func CheckApplicationCompleteness(app *models.Application) error {
 	profile := app.StudentProfile
 
@@ -144,6 +154,16 @@ func CheckApplicationCompleteness(app *models.Application) error {
 	return nil
 }
 
+// UpsertStudentAddresses inserts or updates student addresses in the database.
+// It processes only "permanent" and "current" address types, skipping empty addresses.
+//
+// Parameters:
+// - db (*gorm.DB): The database connection.
+// - studentID (uint): The ID of the student.
+// - addresses ([]models.AddressInput): The list of address inputs to upsert.
+//
+// Returns:
+// - error: An error if the operation fails, or nil if successful.
 func UpsertStudentAddresses(db *gorm.DB, studentID uint, addresses []models.AddressInput) error {
 	for _, addr := range addresses {
 		if addr.Type != "permanent" && addr.Type != "current" {
@@ -197,6 +217,16 @@ func UpsertStudentAddresses(db *gorm.DB, studentID uint, addresses []models.Addr
 	return nil
 }
 
+// UpsertStudentDocuments inserts or updates student documents in the database.
+// It skips documents with missing name or URL.
+//
+// Parameters:
+// - db (*gorm.DB): The database connection.
+// - studentID (uint): The ID of the student.
+// - documents ([]models.DocumentInput): The list of document inputs to upsert.
+//
+// Returns:
+// - error: An error if the operation fails, or nil if successful.
 func UpsertStudentDocuments(db *gorm.DB, studentID uint, documents []models.DocumentInput) error {
 	for _, doc := range documents {
 		if doc.Name == "" || doc.URL == "" {
@@ -232,6 +262,16 @@ func UpsertStudentDocuments(db *gorm.DB, studentID uint, documents []models.Docu
 	return nil
 }
 
+// UpsertEducationHistory inserts or updates a student's education history in the database.
+// It skips empty education history entries.
+//
+// Parameters:
+// - db (*gorm.DB): The database connection.
+// - studentID (uint): The ID of the student.
+// - history ([]models.EducationHistoryInput): The list of education history inputs to upsert.
+//
+// Returns:
+// - error: An error if the operation fails, or nil if successful.
 func UpsertEducationHistory(db *gorm.DB, studentID uint, history []models.EducationHistoryInput) error {
 	for _, edu := range history {
 		if edu.Degree == "" && edu.University == "" && edu.Course == "" && edu.Grade == "" && edu.YearOfPassing == 0 {
@@ -271,4 +311,51 @@ func UpsertEducationHistory(db *gorm.DB, studentID uint, history []models.Educat
 		}
 	}
 	return nil
+}
+
+// ApplySchemeFilters applies various filters to a database query for schemes.
+// Filters include scheme attributes (e.g., name, status, amount) and eligibility criteria (e.g., gender, income limit).
+//
+// Parameters:
+// - query (*gorm.DB): The initial database query.
+// - filter (models.SchemeFilter): The filter criteria to apply.
+//
+// Returns:
+// - *gorm.DB: The modified query with the applied filters.
+func ApplySchemeFilters(query *gorm.DB, filter models.SchemeFilter) *gorm.DB {
+	// Scheme Filters
+	if filter.Name != nil {
+		query = query.Where("schemes.name ILIKE ?", "%"+*filter.Name+"%")
+	}
+	if filter.Status != nil {
+		query = query.Where("schemes.status = ?", *filter.Status)
+	}
+	if filter.MinAmount != nil {
+		query = query.Where("schemes.amount >= ?", *filter.MinAmount)
+	}
+	if filter.MaxAmount != nil {
+		query = query.Where("schemes.amount <= ?", *filter.MaxAmount)
+	}
+	if filter.StartAfter != nil {
+		query = query.Where("schemes.start_date >= ?", *filter.StartAfter)
+	}
+	if filter.EndBefore != nil {
+		query = query.Where("schemes.end_date <= ?", *filter.EndBefore)
+	}
+
+	// Eligibility Filters
+	if filter.Gender != nil {
+		query = query.Where("eligibilities.gender = ?", *filter.Gender)
+	}
+	if filter.AcademicQualification != nil {
+		query = query.Where("eligibilities.academic_qualification = ?", *filter.AcademicQualification)
+	}
+	if filter.IncomeLimit != nil {
+		query = query.Where("eligibilities.income_limit >= ?", *filter.IncomeLimit)
+	}
+	if filter.Category != nil {
+		query = query.Where("eligibilities.category = ?", *filter.Category)
+	}
+
+	return query
 }
